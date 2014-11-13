@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<title>GO Time Series</title>
+<!-- Example based on http://bl.ocks.org/mbostock/3887118 -->
+<!-- Tooltip example from http://www.d3noob.org/2013/01/adding-tooltips-to-d3js-graph.html -->
+<head>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" type=text/css>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css" type=text/css>
+<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+
+<script src="cdnjs.cloudflare.com/ajax/libs/d3-tip/0.6.3/d3-tip.min.js"></script>
+
+<script src="http://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.15/require.min.js"></script>   
+
+<script type="text/javascript">
+ 'use strict';
+    
+       
+</script>
+</head>
+    
+<style>
+body {
+  font: 11px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.axis1 path,
+.axis1 line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+
+.dot {
+  stroke: #000;
+}
+
+div.tooltip {
+
+                color: #222;
+                background: #fff;
+                padding: .5em;
+                text-shadow: #f5f5f5 0 1px 0;
+                border-radius: 2px;
+                box-shadow: 0px 0px 2px 0px #a6a6a6;
+                opacity: 0.9;
+                position: absolute;
+            }
+            
+  .d3-tip {
+                line-height: 1;
+                font-weight: bold;
+                padding: 12px;
+                background: rgba(0, 0, 0, 0.8);
+                color: #fff;
+                border-radius: 2px;
+            }
+
+  .loader {
+              position: absolute;
+              top: 0;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              background: rgba(255,255,255,0.8);
+              text-align: center;
+              z-index: 99;
+              display: none;
+          }
+  .loader p {
+                margin-top: 180px;
+            }
+    path { 
+            stroke: steelblue;
+            stroke-width: 2;
+            fill: none;
+        }            
+            
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: grey;
+            stroke-width: 1;
+            shape-rendering: crispEdges;
+        }
+
+        .brush .extent {
+            stroke: #fff;
+            fill-opacity: .125;
+            shape-rendering: crispEdges;
+        }     
+
+    span.glyphicon-info-sign{
+      font-size:1.5em;
+    }  
+
+</style>
+<body>
+  <div class="btn-group">
+    <a class="btn btn-primary dropdown-toggle" data-toggle="dropdown" href="#">Select a method<span class="caret"></span></a>
+    <ul class="dropdown-menu">
+      <li><a href="#">Changepoint Detection</a></li>
+      <li><a href="#">ARIMA</a></li>
+      <li><a href="#">Seasonal Trend Decomposition</a></li>
+      <li><a href="#">Moving average</a></li>
+      <li class="divider"></li>
+      <li><a href="#">Other</a></li>
+    </ul>
+  </div>
+<a class="external" data-toggle="modal" href="" data-target="#myModal"><span class="glyphicon glyphicon-info-sign"></span></a>
+
+
+
+<!-- Modal -->
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-body">
+      </div>
+      <div class="modal-footer">
+        <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div>
+  <!-- /.modal-dialog -->
+</div><!-- /.modal -->
+<!--<div id="securityBannerTop" style="background-color:green; color:white;width:100%;padding:10px">
+            <center><strong>UNCLASSIFIED</strong>
+                <br/>For Official Use Only</center>
+       </div>
+     -->
+<br>
+<br>
+<script type="text/javascript">
+
+
+
+
+$('a.external').on('click', function(e) {
+        e.preventDefault();
+        var url = $(this).attr('href');
+        $(".modal-body").html('<iframe width="100%" height="100%" frameborder="0" scrolling="yes" allowtransparency="true" src="'+url+'"></iframe>');
+ 
+    });
+ 
+    $('#myModal').on('show.bs.modal', function () {
+ 
+        $(this).find('.modal-dialog').css({
+                  width:'60%', //choose your width
+                  height:'100%', 
+                  'padding':'0'
+           });
+         $(this).find('.modal-content').css({
+                  height:'100%', 
+                  'border-radius':'0',
+                  'padding':'0'
+           });
+         $(this).find('.modal-body').css({
+                  width:'auto',
+                  height:'100%', 
+                  'padding':'0'
+           });
+    })
+
+
+function get_data(query_url){
+  console.log("I got data")
+ return $.getJSON(query_url+'?date1="2010-3-3"&date2="2014-6-25"')
+}
+
+
+$('container').empty();
+
+
+function custom_sort(a,b){
+  return new Date(a.DateTime)-new Date(b.DateTime);
+};
+ 
+
+var es=[];
+
+
+var query_url='opencpu_example'
+$.getJSON(query_url+'?date1="2010-3-3"&date2="2014-6-25"',function(response){
+  es=response;
+
+console.log(es)
+
+
+ $(function () {
+
+            requirejs.config({
+                "baseUrl": "./",
+                "paths": {
+                    "app": "./",
+                    'moment': 'http://cdnjs.cloudflare.com/ajax/libs/moment.js/2.2.1/moment.min',
+                    'underscore': 'http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min'             
+                }
+            });
+
+
+            require(['app/d3.chart'], function (d3Chart) {
+
+              $(function(){
+              $(".dropdown-menu li a").click(function(){
+              var selText = $(this).text();
+        var query_url;
+  $(this).parents('.btn-group').find('.dropdown-toggle').html(selText+' <span class="caret"></span>');
+  if(selText=='ARIMA'){
+
+    $('a.external').prop('href',"");
+    query_url="arima";
+    
+   
+    
+    $.getJSON(query_url+'?date1="2010-3-3"&date2="2014-6-25"',function(response){
+    es=response;
+     for(var key in Object.keys(es)){
+                  es[Object.keys(es)[key]].sort(function(a,b){
+                  return new Date(a.DateTime).getTime() - new Date(b.DateTime).getTime()
+
+                  });
+                
+                d3Chart.addGraph({id: Object.keys(es)[key], type: 'analog', name: Object.keys(es)[key], dataId: 515, yVal: ['Value'], data: es[Object.keys(es)[key]] });
+                }
+  d3Chart.render();
+  });
+    
+  }
+  else if (selText=='Seasonal Trend Decomposition'){
+
+    $('a.external').prop('href',"http://en.wikipedia.org/wiki/Decomposition_of_time_series");
+  query_url="stl_test"
+  //graph_load(query_url);
+  }
+  else{
+    query_url="bcp";
+    $('a.external').prop('href',"http://en.wikipedia.org/wiki/Change_detection");
+    $.getJSON(query_url+'?date1="2010-3-3"&date2="2014-6-25"',function(response){
+    es=response;
+     for(var key in Object.keys(es)){
+                  es[Object.keys(es)[key]].sort(function(a,b){
+                  return new Date(a.DateTime).getTime() - new Date(b.DateTime).getTime()
+
+                  });
+                
+                d3Chart.addGraph({id: Object.keys(es)[key], type: 'analog', name: Object.keys(es)[key], dataId: 515, yVal: ['Value'], data: es[Object.keys(es)[key]] });
+                }
+  d3Chart.render();
+  });
+  }
+  
+
+d3Chart.removeGraph('raw')
+d3Chart.render();
+});
+});
+
+               
+
+                d3Chart.init({ container: '#container', xDim: 'DateTime' });
+                
+               
+                $("g.graph").remove();
+                
+                for(var key in Object.keys(es)){
+                  es[Object.keys(es)[key]].sort(function(a,b){
+                  return new Date(a.DateTime).getTime() - new Date(b.DateTime).getTime()
+
+                  });
+                
+                d3Chart.addGraph({id: Object.keys(es)[key], type: 'analog', name: Object.keys(es)[key], dataId: 515, yVal: ['Value'], data: es[Object.keys(es)[key]] });
+                }
+
+               
+                d3Chart.reorderGraph('raw','up')
+                //d3Chart.addGraph({ id: 'DI', type: 'digital', name: 'Digital Input', dataId: 522, data: diData });
+         //       d3Chart.addGraph({ id: 'Accel', type: 'analog', name: 'Accel', dataId: 522, yVal: ['X', 'Y', 'Z'], data: accelData });
+                d3Chart.render();
+
+
+               
+             
+
+                setTimeout(function () {  
+                    //d3Chart.reorderGraph('Accel', 'up');
+                    
+                    //window.setTimeout(function () {
+                    //    d3Chart.removeGraph('RPM');
+                    //}, 2000);
+                    
+                }, 3000);
+
+
+            });
+
+        });
+
+});
+
+
+
+</script>
+  
+      <div id="container" style="min-width: 300px;width:100%">
+      <div class="loader">Loading...</div>
+    </div>
+</body>
+</html>
